@@ -7,7 +7,7 @@ namespace ChatClientApp
 {
   class Program
   {
-    const string serverAddress = "192.168.1.50";
+    const string serverAddress = "127.0.0.1";
     const int serverPort = 13000;
 
     static void Main(string[] args)
@@ -22,7 +22,7 @@ namespace ChatClientApp
         };
 
         // Create network tunnel client
-        INTClient client = new NTClient();
+        INTClient client = new NTClient(2048);
 
         // Event used to receive notification from NTClient that the connection
         // process has completed (successful or not)
@@ -46,13 +46,29 @@ namespace ChatClientApp
           throw new Exception("Unable to establish the network tunnel.");
         }
 
-        Console.WriteLine("Network tunnel established.\n");
+        // Subscribe to inbox notifications so that incoming messages can be
+        // written to the console
+        client.IncomingPayloadEvent += delegate (object sender, EventArgs args)
+        {
+          client.Receive(out byte[] incomingMessage);
+          Console.SetCursorPosition(Console.CursorLeft, Console.CursorTop);
+          Console.WriteLine(System.Text.Encoding.ASCII.GetString(incomingMessage, 0, incomingMessage.Length));
+        };
 
-        // Continue until user quits
+        Console.WriteLine("Network tunnel established.\n");
+        Console.WriteLine("Send any message:");
+
+        // Continue until user quits or connection is unexpectedly terminated
         while (true)
         {
-          // Prompt user for input
-          Console.Write("Message: ");
+          // Verify that the connection is still alive
+          if (client.ConnectionState != ConnectionState.Connected)
+          {
+            Console.WriteLine("The connection was unexpectedly terminated.");
+            break;
+          }
+
+          // Take user input
           string userMessage = Console.ReadLine();
 
           // Ctrl + C breaks the loop
@@ -63,10 +79,7 @@ namespace ChatClientApp
           }
 
           // Send user input to server through network tunnel
-          // TODO
-
-          // ?
-          // TODO
+          client.Send(System.Text.Encoding.ASCII.GetBytes(userMessage));
         }
 
         // Close the tunnel

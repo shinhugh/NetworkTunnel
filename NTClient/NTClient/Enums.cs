@@ -7,6 +7,7 @@ namespace NetworkTunnel
   public enum ConnectionState
   {
     Disconnected,
+    Disconnecting,
     Connected,
     Connecting
   }
